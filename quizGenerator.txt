@@ -1,0 +1,117 @@
+async function startup(state, tools) {
+    tools.reply("Welcome to the Cloud Computing Quiz Generator!");
+    state.isReadyRequested = false;
+    state.isChapterRequested = false;
+    state.isNumberOfQuestionsRequested = false;
+    state.isDifficultyRequested = false;
+    state.isQuestionTypeRequested = false;
+    state.isQuizRequested = false;
+    if (!state.isReadyRequested) {
+      state.isReadyRequested = true;
+      tools.reply("Are you ready to create a quiz for your cloud computing class?");
+      return;
+    }
+}
+
+function isValidChapter(input, chapters) {
+  const number = parseInt(input, 10);
+  return Number.isInteger(number) && number > 0 && number <= chapters.length;
+}
+
+function isValidPositiveInteger(input) {
+  const number = parseInt(input, 10);
+  return Number.isInteger(number) && number > 0;
+}
+
+function isValidDifficulty(input) {
+  const number = parseInt(input, 10);
+  return Number.isInteger(number) && number >= 1 && number <= 10;
+}
+
+function isValidType(response) {
+  const trimmedResponse = response.trim().toUpperCase();
+  return trimmedResponse === 'A' || trimmedResponse === 'B';
+}
+
+async function run(payload, state, tools) {
+  const userResponse = payload.toLowerCase().trim();
+  const chapters = [
+    "Introduction to cloud computing",
+    "Data Center Networking",
+    "Virtualization in Cloud",
+    "Cloud CPU Scheduling",
+    "Cloud Security CAPTCHA-ReCAPTCHA",
+    "Cloud Security",
+    "CAP Theorem",
+    "Pagerank Algorithm"
+  ];
+  
+
+  
+  if (state.isReadyRequested && !state.isChapterRequested) {
+    if (userResponse === 'yes' || userResponse === 'sure') {
+      state.isChapterRequested = true;
+      let chaptersList = chapters.map((chapter, index) => `${index + 1}. ${chapter}`).join('\n');
+      tools.reply(`Which chapter would you like to focus on? Here are the chapters:\n\n${chaptersList}`);
+      return;
+    } else {
+      tools.reply("Please let me know when you're ready to proceed.");
+      return;
+    }
+  }
+  
+  if (state.isChapterRequested && !state.isNumberOfQuestionsRequested) {
+    if (isValidChapter(userResponse, chapters)) {
+      state.isNumberOfQuestionsRequested = true;
+      state.selectedChapter = chapters[parseInt(userResponse, 10) - 1];
+      tools.reply(`You've selected "${state.selectedChapter}". How many questions would you like to have in the quiz?`);
+      return;
+    } else {
+      tools.reply("That's not a valid chapter number. Please enter a number from the list provided.");
+      return;
+    }
+  }
+  
+  if (state.isNumberOfQuestionsRequested && !state.isDifficultyRequested) {
+    if (isValidPositiveInteger(userResponse)) {
+      state.isDifficultyRequested = true;
+      state.numberOfQuestions = parseInt(userResponse, 10);
+      tools.reply("What difficulty level would you like the quiz to be, on a scale of 1 to 10?");
+      return;
+    } else {
+      tools.reply("Please enter a valid number of questions.");
+      return;
+    }
+  }
+  
+  if (state.isDifficultyRequested && !state.isQuestionTypeRequested) {
+    if (isValidDifficulty(userResponse)) {
+      state.isQuestionTypeRequested = true;
+      state.difficultyLevel = parseInt(userResponse, 10);
+      tools.reply("What type of questions would you like?\n\nA: Multiple Choice Questions (MCQ)\n\nB: Structured Questions");
+      return;
+    } else {
+      tools.reply("Please enter a valid difficulty level between 1 and 10.");
+      return;
+    }
+  }
+  
+  if (state.isQuestionTypeRequested && !state.isQuizRequested) {
+    if (isValidType(userResponse)) {
+      state.isQuizRequested = true;
+      state.questionType = userResponse.toUpperCase() === 'A' ? "Multiple Choice Questions" : "Structured Questions";
+      tools.reply(`A quiz with ${state.numberOfQuestions} ${state.questionType} of difficulty level ${state.difficultyLevel} for the chapter "${state.selectedChapter}" will be generated.`);
+      state.quizGenerated = await tools.quizGenerator({quiz: `A quiz with ${state.numberOfQuestions} ${state.questionType} of difficulty level ${state.difficultyLevel} for the chapter "${state.selectedChapter}" will be generated.`});
+      tools.reply(state.quizGenerated);
+      return;
+    } else {
+      tools.reply("Please enter either 'A' for MCQ or 'B' for Structured Questions.");
+      return;
+    }
+  }
+  if (state.isQuizRequested) {
+    const markingGenerated = await tools.markQuiz({userQuiz: userResponse,quiz: state.quizGenerated });
+    tools.reply(markingGenerated);
+    return;
+  }
+}
